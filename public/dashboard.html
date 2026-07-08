@@ -158,6 +158,17 @@
   td .pct-bad { color: var(--miss); }
   .empty-log { color: var(--ink-faint); font-size: 13px; padding: 22px; text-align: center; font-family: var(--mono); }
 
+  /* ---- backends ---- */
+  .chip.online { color: #0c130b; background: var(--flow); border-color: var(--flow); font-weight: 700; }
+  .chip.offline { color: var(--miss); border-color: #ff7d6c44; }
+  .envrow { display: flex; gap: 8px; margin-bottom: 6px; }
+  .envrow input { flex: 1; min-width: 0; }
+  .backends-panel { margin-bottom: 18px; }
+  .addbackend { display: none; margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .addbackend.show { display: block; }
+  .retry-row { display: flex; gap: 10px; }
+  .retry-row .field-input { flex: 1; }
+
   @media (max-width: 820px) {
     .readouts { grid-template-columns: 1fr; }
     .grid { grid-template-columns: 1fr; }
@@ -210,6 +221,36 @@
     <span class="node">your tools</span>
     <span class="arr" style="margin-left:8px">·</span>
     <span>trim · meter · retry, on every call</span>
+  </div>
+
+  <div class="panel backends-panel">
+    <h2>Backends</h2>
+    <p class="phint">MCP servers behind the proxy. Add one to expose its tools immediately, no restart needed.</p>
+    <div id="backendlist"><div class="wz-empty">Loading backends…</div></div>
+    <button class="btn small" id="toggleAddBackend" type="button">+ Add a server</button>
+    <div class="addbackend" id="addBackendForm">
+      <div class="field-input"><label>Name</label><input id="be-name" placeholder="e.g. backend-b" /></div>
+      <div class="field-input"><label>Command</label><input id="be-command" value="node" /></div>
+      <div class="field-input"><label>Args (space-separated or one per line)</label><textarea id="be-args" rows="2" placeholder="test/flaky-backend.mjs" style="font-family:var(--mono);font-size:13px;background:#0d1524;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;resize:vertical"></textarea></div>
+      <div class="field-input">
+        <label>Environment variables (optional)</label>
+        <div id="envRows"></div>
+        <button class="btn small" id="addEnvRow" type="button">+ add variable</button>
+      </div>
+      <div class="field-input">
+        <label>Retry</label>
+        <div class="retry-row">
+          <div class="field-input"><label style="font-size:10.5px">max attempts</label><input id="be-maxAttempts" type="number" value="3" min="1" /></div>
+          <div class="field-input"><label style="font-size:10.5px">base delay (ms)</label><input id="be-baseDelayMs" type="number" value="500" min="0" /></div>
+          <div class="field-input"><label style="font-size:10.5px">max delay (ms)</label><input id="be-maxDelayMs" type="number" value="8000" min="0" /></div>
+        </div>
+      </div>
+      <div class="wz-actions">
+        <button class="btn primary" id="submitBackend">Connect</button>
+        <button class="btn" id="cancelAddBackend" type="button">Cancel</button>
+      </div>
+      <div id="backendErr"></div>
+    </div>
   </div>
 
   <div class="grid">
@@ -309,6 +350,112 @@ function renderLog(rows) {
   h += "</tbody></table>";
   $("logtable").innerHTML = h;
 }
+
+// ---------- backends ----------
+let BACKENDS = [];
+async function loadBackends() {
+  const r = await fetch("/api/backends");
+  const d = await r.json();
+  BACKENDS = d.backends;
+  renderBackends();
+}
+function renderBackends() {
+  if (BACKENDS.length === 0) { $("backendlist").innerHTML = '<div class="wz-empty">No backends configured.</div>'; return; }
+  let h = "";
+  for (const b of BACKENDS) {
+    const statusChip = b.connected ? '<span class="chip online">connected</span>' : '<span class="chip offline">disconnected</span>';
+    const cmdLine = (b.command + " " + (b.args || []).join(" ")).trim();
+    const envNote = b.envKeys && b.envKeys.length ? '<div class="tmeta">env: ' + b.envKeys.join(", ") + " (values hidden)</div>" : "";
+    h += '<div class="tool">' +
+      '<div class="trow"><span class="tname">' + b.name + '</span>' +
+      '<span class="chip">' + cmdLine.replace(/</g, "&lt;") + '</span>' +
+      statusChip +
+      '<span class="tspacer"></span>' +
+      '<button class="btn small" data-remove="' + b.name + '">Remove</button></div>' +
+      envNote +
+      '</div>';
+  }
+  $("backendlist").innerHTML = h;
+  document.querySelectorAll("#backendlist button[data-remove]").forEach((btn) => {
+    btn.addEventListener("click", () => removeBackendUI(btn.getAttribute("data-remove")));
+  });
+}
+function addEnvRow(key, value) {
+  const row = document.createElement("div");
+  row.className = "envrow";
+  row.innerHTML = '<input class="env-key" placeholder="KEY" /><input class="env-val" placeholder="value" /><button type="button" class="btn small env-remove">×</button>';
+  row.querySelector(".env-key").value = key || "";
+  row.querySelector(".env-val").value = value || "";
+  row.querySelector(".env-remove").addEventListener("click", () => row.remove());
+  $("envRows").appendChild(row);
+}
+function parseArgs(text) {
+  return text.split(/\s+/).map((s) => s.trim()).filter(Boolean);
+}
+function resetAddBackendForm() {
+  $("be-name").value = "";
+  $("be-command").value = "node";
+  $("be-args").value = "";
+  $("envRows").innerHTML = "";
+  $("be-maxAttempts").value = 3;
+  $("be-baseDelayMs").value = 500;
+  $("be-maxDelayMs").value = 8000;
+  $("backendErr").innerHTML = "";
+}
+async function submitBackend() {
+  const name = $("be-name").value.trim();
+  const command = $("be-command").value.trim();
+  const args = parseArgs($("be-args").value);
+  const env = {};
+  document.querySelectorAll("#envRows .envrow").forEach((row) => {
+    const k = row.querySelector(".env-key").value.trim();
+    const v = row.querySelector(".env-val").value;
+    if (k) env[k] = v;
+  });
+  const retry = {
+    maxAttempts: parseInt($("be-maxAttempts").value, 10) || 3,
+    baseDelayMs: parseInt($("be-baseDelayMs").value, 10) || 500,
+    maxDelayMs: parseInt($("be-maxDelayMs").value, 10) || 8000,
+  };
+  $("backendErr").innerHTML = "";
+  if (!name) { $("backendErr").innerHTML = '<div class="err">Name is required.</div>'; return; }
+  if (!command) { $("backendErr").innerHTML = '<div class="err">Command is required.</div>'; return; }
+  const btn = $("submitBackend"); btn.disabled = true; btn.textContent = "Connecting…";
+  try {
+    const r = await fetch("/api/backends", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, command, args, env, retry }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "Could not add backend");
+    showToast('Connected "' + name + '"');
+    resetAddBackendForm();
+    $("addBackendForm").classList.remove("show");
+    await Promise.all([loadBackends(), loadTools()]);
+  } catch (e) {
+    $("backendErr").innerHTML = '<div class="err">' + e.message + "</div>";
+  } finally {
+    btn.disabled = false; btn.textContent = "Connect";
+  }
+}
+async function removeBackendUI(name) {
+  if (!confirm('Remove backend "' + name + '"? Its tools will disappear immediately.')) return;
+  try {
+    const r = await fetch("/api/backends/" + encodeURIComponent(name), { method: "DELETE" });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "Could not remove backend");
+    showToast('Removed "' + name + '"');
+    await Promise.all([loadBackends(), loadTools()]);
+  } catch (e) {
+    showToast(e.message);
+  }
+}
+$("toggleAddBackend").addEventListener("click", () => {
+  $("addBackendForm").classList.toggle("show");
+});
+$("cancelAddBackend").addEventListener("click", () => {
+  $("addBackendForm").classList.remove("show");
+  resetAddBackendForm();
+});
+$("submitBackend").addEventListener("click", submitBackend);
+$("addEnvRow").addEventListener("click", () => addEnvRow());
 
 // ---------- tool list ----------
 async function loadTools() {
@@ -486,6 +633,7 @@ function showToast(msg) {
 $("endpoint").textContent = location.host;
 loadTools();
 loadStats();
+loadBackends();
 setInterval(loadStats, 3000);
 </script>
 </body>

@@ -5,7 +5,14 @@ import { dirname, join } from "node:path";
 import { FlightRecorder, estimateTokens } from "./recorder.js";
 import { BackendManager } from "./backends.js";
 import { projectToolResult } from "./projection.js";
-import { writeProjection, YdrisConfig } from "./config.js";
+import {
+  writeProjection,
+  writeBackend,
+  removeBackend,
+  normalizeBackend,
+  BackendConfig,
+  YdrisConfig,
+} from "./config.js";
 
 interface DashboardDeps {
   recorder: FlightRecorder;
@@ -92,5 +99,70 @@ export function registerDashboard(app: Express, deps: DashboardDeps): void {
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
+  });
+
+  // Every configured backend, with whether its live client is actually connected.
+  // Only env var names are returned, never values, so secrets never round-trip
+  // back to the browser once they've been set.
+  app.get("/api/backends", (_req: Request, res: Response) => {
+    const list = cfg.backends.map((b) => ({
+      name: b.name,
+      command: b.command,
+      args: b.args,
+      envKeys: Object.keys(b.env),
+      retry: b.retry,
+      connected: backends.isConnected(b.name),
+    }));
+    res.json({ backends: list });
+  });
+
+  // Add a backend: write it to ydris.yaml, then connect it live. If the live
+  // connect fails, roll back the config write so the file never describes a
+  // backend that isn't actually running.
+  app.post("/api/backends", async (req: Request, res: Response) => {
+    const body = req.body ?? {};
+    if (typeof body.name !== "string" || !body.name.trim()) {
+      res.status(400).json({ error: "A backend name is required." });
+      return;
+    }
+    if (typeof body.command !== "string" || !body.command.trim()) {
+      res.status(400).json({ error: "A command is required." });
+      return;
+    }
+    if (cfg.backends.some((b) => b.name === body.name)) {
+      res.status(409).json({ error: `A backend named "${body.name}" already exists.` });
+      return;
+    }
+
+    let backend: BackendConfig;
+    try {
+      backend = normalizeBackend(body);
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+
+    writeBackend(configPath, backend);
+    try {
+      await backends.addBackend(backend);
+      cfg.backends.push(backend);
+      res.json({ ok: true, name: backend.name });
+    } catch (err) {
+      removeBackend(configPath, backend.name);
+      res.status(502).json({ error: `Could not connect: ${err instanceof Error ? err.message : String(err)}` });
+    }
+  });
+
+  // Remove a backend: stop its live connection, then delete it from ydris.yaml.
+  app.delete("/api/backends/:name", async (req: Request, res: Response) => {
+    const name = String(req.params.name);
+    if (!cfg.backends.some((b) => b.name === name)) {
+      res.status(404).json({ error: `No backend named "${name}".` });
+      return;
+    }
+    await backends.removeBackend(name);
+    removeBackend(configPath, name);
+    cfg.backends = cfg.backends.filter((b) => b.name !== name);
+    res.json({ ok: true, name });
   });
 }
