@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="brand-assets/Main Logo.jpeg" alt="Ydris logo" width="240">
+</p>
+
 # Ydris
 
 **An open source, vendor-agnostic MCP governance proxy. It runs on your machine and governs the last mile of tool traffic for every agent you use.**
