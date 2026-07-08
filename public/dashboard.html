@@ -5,10 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="icon" type="image/jpeg" href="/brand-assets/Main%20Logo.jpeg" />
 <title>Ydris control panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <style>
   :root {
     /* dark tokens (default baseline) */
-    --bg: #0b1220;
+    --bg: #000000;
     --glow-1: #16233d;
     --glow-2: #12213a;
     --surface: #131d31;
@@ -31,7 +34,7 @@
     --spectrum-indigo: #7c7cf0;
     --spectrum-violet: #c46be0;
     --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, Menlo, monospace;
-    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --sans: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
   /* system preference is the default signal, applied only until the user toggles */
   @media (prefers-color-scheme: light) {
@@ -46,7 +49,7 @@
   }
   /* explicit toggle overrides win in both directions regardless of system preference */
   :root[data-theme="dark"] {
-    --bg: #0b1220; --glow-1: #16233d; --glow-2: #12213a;
+    --bg: #000000; --glow-1: #16233d; --glow-2: #12213a;
     --surface: #131d31; --surface-2: #182541; --well: #0d1524;
     --line: #243350; --line-strong: #33477099;
     --ink: #e8eff9; --ink-dim: #8a99b4; --ink-faint: #5b6a86;
