@@ -37,18 +37,49 @@ export class BackendManager {
 
   async start(backends: BackendConfig[]): Promise<void> {
     for (const b of backends) {
-      const client = new Client({ name: `ydris-${b.name}`, version: "0.0.1" });
-      const transport = new StdioClientTransport({
-        command: b.command,
-        args: b.args,
-        env: { ...process.env, ...b.env } as Record<string, string>,
-      });
-      await client.connect(transport);
-      this.clients.set(b.name, client);
-      this.retryByBackend.set(b.name, b.retry);
-      console.error(`[ydris] connected backend "${b.name}"`);
+      await this.connectBackend(b);
     }
     await this.refreshTools();
+  }
+
+  private async connectBackend(b: BackendConfig): Promise<void> {
+    const client = new Client({ name: `ydris-${b.name}`, version: "0.0.1" });
+    const transport = new StdioClientTransport({
+      command: b.command,
+      args: b.args,
+      env: { ...process.env, ...b.env } as Record<string, string>,
+    });
+    await client.connect(transport);
+    this.clients.set(b.name, client);
+    this.retryByBackend.set(b.name, b.retry);
+    console.error(`[ydris] connected backend "${b.name}"`);
+  }
+
+  // Connect a single new backend at runtime and fold its tools into the index.
+  // Throws (without mutating state beyond a failed client) if the connect fails,
+  // so callers can decide whether to roll back a config write.
+  async addBackend(b: BackendConfig): Promise<void> {
+    await this.connectBackend(b);
+    await this.refreshTools();
+  }
+
+  // Stop and disconnect one backend by name, dropping its tools from the index.
+  async removeBackend(name: string): Promise<void> {
+    const client = this.clients.get(name);
+    if (client) {
+      try {
+        await client.close();
+      } catch {
+        /* ignore */
+      }
+    }
+    this.clients.delete(name);
+    this.retryByBackend.delete(name);
+    await this.refreshTools();
+  }
+
+  isConnected(name: string): boolean {
+    return this.clients.has(name);
   }
 
   async refreshTools(): Promise<void> {
