@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.db
+*.db-shm
+*.db-wal
+ydris.yaml
+.DS_Store

@@ -1,0 +1,26 @@
+{
+  "name": "ydris",
+  "version": "0.0.1",
+  "description": "Local MCP governance proxy. One HTTP endpoint for every agent, with response projection, per-tool metering, and retry on every tool call.",
+  "type": "module",
+  "bin": { "ydris": "./dist/index.js" },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "better-sqlite3": "^11.0.0",
+    "yaml": "^2.5.0",
+    "express": "^4.21.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "tsx": "^4.19.0",
+    "@types/express": "^5.0.0",
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0"
+  }
+}

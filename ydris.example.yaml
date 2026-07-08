@@ -1,0 +1,26 @@
+port: 9280
+dbPath: ./ydris.db
+
+# Each backend is any MCP server you run locally. Point command/args at the
+# executable that starts it. Secrets go in env here or in your real ydris.yaml,
+# never in this example file, and ydris.yaml is gitignored.
+backends:
+  - name: backend-a
+    command: node
+    args: ["test/fake-backend.mjs"]
+    env:
+      SOME_API_KEY: "set-in-your-real-ydris-yaml"
+    retry:
+      maxAttempts: 3
+      baseDelayMs: 300
+      maxDelayMs: 5000
+
+# Trim a fat tool response down to only the fields you actually use.
+# Key is the tool name. Use [] for array fan-out, so "records[].email"
+# keeps email on every element and drops everything else.
+projection:
+  record_search:
+    - "records[].name"
+    - "records[].title"
+    - "records[].email"
+    - "records[].organization.name"
