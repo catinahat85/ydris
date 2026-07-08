@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -22,11 +22,16 @@ interface DashboardDeps {
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
-// public/ ships alongside src/ and dist/ at the repo root, one level up from this file.
+// public/ and brand-assets/ ship alongside src/ and dist/ at the repo root,
+// one level up from this file.
 const htmlPath = join(here, "..", "public", "dashboard.html");
+const brandAssetsPath = join(here, "..", "brand-assets");
 
 export function registerDashboard(app: Express, deps: DashboardDeps): void {
   const { recorder, backends, cfg, configPath } = deps;
+
+  // Serve the logo and other brand imagery the dashboard references.
+  app.use("/brand-assets", express.static(brandAssetsPath));
 
   // The dashboard page itself. Read per request so edits show on refresh.
   app.get("/", (_req: Request, res: Response) => {

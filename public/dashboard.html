@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" type="image/jpeg" href="/brand-assets/Main%20Logo.jpeg" />
 <title>Ydris control panel</title>
 <style>
   :root {
@@ -79,7 +80,12 @@
   /* ---- top bar ---- */
   .topbar { display: flex; align-items: center; gap: 14px; padding-bottom: 22px; }
   .mark { display: flex; align-items: center; gap: 11px; }
-  .mark svg { display: block; }
+  /* the actual brand logo (rainbow arc + warrior mark), cropped to exclude its
+     own wordmark since the topbar already carries a text wordmark beside it.
+     Framed in a fixed black badge — the source art has a black background and
+     reads correctly on both themes framed this way, rather than assuming transparency. */
+  .brandmark { width: 76px; height: 40px; border-radius: 8px; overflow: hidden; background: #000; flex-shrink: 0; }
+  .brandmark img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0%; }
   .wordmark { font-weight: 800; letter-spacing: -0.02em; font-size: 20px; }
   .wordmark .sub { color: var(--ink-faint); font-weight: 600; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; display: block; margin-top: -2px; }
   .topbar .spacer { flex: 1; }
@@ -244,10 +250,7 @@
 
   <div class="topbar">
     <div class="mark">
-      <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-        <path d="M16 3l11 6.5v13L16 29 5 22.5v-13L16 3z" stroke="var(--ink-dim)" stroke-width="1.4" fill="var(--surface-2)"/>
-        <path d="M11 12l5 4 5-4M16 16v6" stroke="var(--ok)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
+      <div class="brandmark"><img src="/brand-assets/Main%20Logo.jpeg" alt="Ydris" /></div>
       <div class="wordmark">Ydris<span class="sub">control panel</span></div>
     </div>
     <div class="spacer"></div>
