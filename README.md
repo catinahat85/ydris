@@ -103,7 +103,15 @@ npm start
 
 Point any MCP client at `http://127.0.0.1:9280/mcp`, and the tools from every backend show up namespaced as `<backend>__<tool>` so two servers never collide.
 
+## Control panel
+
+Open `http://127.0.0.1:9280/` in a browser for the beginner-friendly panel. It shows live tokens saved, call counts, and success rate across every tool, and it carries a wizard that writes your trimming rules for you, no YAML by hand.
+
+The wizard is three steps. Pick a tool, run it once so Ydris can see what it returns, then check the fields worth keeping while a before-and-after bar shows the token cut in real time. When you save, the rule lands in `ydris.yaml` and takes effect on the very next call, no restart. This is also the fastest way to see what Ydris does, since you watch a fat response collapse on screen.
+
 ## Read your stats
+
+The control panel shows these live in the browser. For a terminal readout, run:
 
 ```bash
 node dist/index.js report
@@ -119,7 +127,7 @@ node dist/index.js report
 
 ## v0 scope
 
-This release does projection, metering, and retry across stdio backends. Fleet config sync across machines and a provider-quirks registry are the next modules, and they build on the same config surface.
+This release does projection, metering, and retry across stdio backends, plus a local control panel with a field-picker wizard. Fleet config sync across machines and a provider-quirks registry are the next modules, and they build on the same config surface.
 
 ## License
 

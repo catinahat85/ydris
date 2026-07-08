@@ -72,6 +72,11 @@ export class BackendManager {
     return [...this.toolIndex.values()].map((r) => r.definition);
   }
 
+  // Full route metadata for the dashboard: exposed name, backend, original name, schema.
+  listRoutes(): RoutedTool[] {
+    return [...this.toolIndex.values()];
+  }
+
   resolve(exposedName: string): RoutedTool | undefined {
     return this.toolIndex.get(exposedName);
   }

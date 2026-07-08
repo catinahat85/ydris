@@ -1,5 +1,5 @@
-import { readFileSync, existsSync } from "node:fs";
-import { parse } from "yaml";
+import { readFileSync, existsSync, writeFileSync } from "node:fs";
+import { parse, stringify } from "yaml";
 
 export interface RetryConfig {
   maxAttempts: number;
@@ -58,4 +58,19 @@ export function loadConfig(path: string): YdrisConfig {
     backends,
     projection: raw.projection ?? {},
   };
+}
+
+// Persist a single projection rule back into ydris.yaml, preserving the rest of
+// the file's data. The wizard calls this when a user saves field selections.
+// Note: this rewrites the file through the YAML serializer, so hand-written
+// comments in the projection block are not preserved.
+export function writeProjection(path: string, toolName: string, fields: string[]): void {
+  const raw = existsSync(path) ? parse(readFileSync(path, "utf8")) ?? {} : {};
+  raw.projection = raw.projection ?? {};
+  if (fields.length === 0) {
+    delete raw.projection[toolName];
+  } else {
+    raw.projection[toolName] = fields;
+  }
+  writeFileSync(path, stringify(raw), "utf8");
 }
