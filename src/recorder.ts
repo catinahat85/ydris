@@ -89,6 +89,26 @@ export class FlightRecorder {
       .all() as Array<Record<string, unknown>>;
   }
 
+  // Whole-run aggregate for the dashboard header readouts.
+  totals(): { calls: number; successPct: number; tokensSaved: number; rawTokens: number } {
+    const row = this.db
+      .prepare(`
+        SELECT
+          COUNT(*) AS calls,
+          COALESCE(ROUND(100.0 * SUM(ok) / COUNT(*), 1), 100) AS success_pct,
+          COALESCE(SUM(tokens_saved_est), 0) AS tokens_saved,
+          COALESCE(SUM(resp_tokens_raw_est), 0) AS raw_tokens
+        FROM calls
+      `)
+      .get() as any;
+    return {
+      calls: row.calls ?? 0,
+      successPct: row.success_pct ?? 100,
+      tokensSaved: row.tokens_saved ?? 0,
+      rawTokens: row.raw_tokens ?? 0,
+    };
+  }
+
   close(): void {
     this.db.close();
   }

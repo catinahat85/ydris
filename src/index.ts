@@ -10,6 +10,7 @@ import { loadConfig } from "./config.js";
 import { BackendManager } from "./backends.js";
 import { FlightRecorder, estimateTokens } from "./recorder.js";
 import { projectToolResult } from "./projection.js";
+import { registerDashboard } from "./dashboard.js";
 
 const configPath = process.env.YDRIS_CONFIG ?? "./ydris.yaml";
 
@@ -101,6 +102,9 @@ async function main() {
 
   app.get("/health", (_req, res) => res.json({ ok: true, backends: cfg.backends.map((b) => b.name) }));
 
+  // Beginner-facing control panel: live stats + the field-picker wizard.
+  registerDashboard(app, { recorder, backends, cfg, configPath });
+
   app.all("/mcp", async (req, res) => {
     const sid = req.header("mcp-session-id");
     let transport = sid ? transports.get(sid) : undefined;
@@ -122,7 +126,8 @@ async function main() {
 
   app.listen(cfg.port, () => {
     console.error(`[ydris] listening on http://127.0.0.1:${cfg.port}/mcp`);
-    console.error(`[ydris] point your MCP client at that URL. Run "ydris report" for per-tool stats.`);
+    console.error(`[ydris] control panel: http://127.0.0.1:${cfg.port}/`);
+    console.error(`[ydris] point your MCP client at the /mcp URL. Run "ydris report" for a terminal readout.`);
   });
 
   const shutdown = async () => {
